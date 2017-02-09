@@ -1,9 +1,7 @@
 from setuptools import setup
 
-import parsing
-
 setup(name='parsing',
-      version=parsing.__version__,
+      version='1.0.0',
       author='Darren M. Struthers',
       author_email='dstruthers@gmail.com',
       py_modules=['parsing'],

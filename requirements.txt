@@ -1,0 +1,1 @@
+-e git://github.com/dstruthers/python-typefu.git@8277e79c311e4007b292fc0a57036da75196e7b8#egg=typefu-origin/master

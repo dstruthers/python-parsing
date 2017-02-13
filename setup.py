@@ -7,6 +7,6 @@ setup(name='parsing',
       py_modules=['parsing'],
       description='Combinatorial parsing framework',
       license='MIT',
-      install_requires=['typefu'],
-      dependency_links=['https://github.com/dstruthers/python-typefu/tarball/master#egg=typefu']
+      install_requires=['typefu=1.0.0'],
+      dependency_links=['https://github.com/dstruthers/python-typefu/tarball/master#egg=typefu-1.0.0']
       )

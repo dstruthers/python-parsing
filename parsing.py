@@ -25,7 +25,7 @@ __author__ = 'Darren M. Struthers <dstruthers@gmail.com>'
 __version__ = '1.0.0'
 
 import re
-from typefu import wrapped, Mimic
+from typefu import derived, Mimic
 
 # Core classes
 class Parser(object):
@@ -99,7 +99,7 @@ class MultaryCombinator(Parser):
     def __init__(self, parsers):
         self.parsers = [self.coerce(p) for p in parsers]
         
-class Input(wrapped(str)):
+class Input(derived(str)):
     def __init__(self, *args, **kwargs):
         self._consumed = ''
         self._stack = []

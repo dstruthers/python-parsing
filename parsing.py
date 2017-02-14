@@ -35,6 +35,9 @@ class Parser(object):
     def separated_by(self, sep):
         return sep_by(self, sep)
 
+    def surrounded_by(self, outer):
+        return self.coerce(outer) + self + self.coerce(outer)
+
     def __call__(self, input):
         if isinstance(input, Input):
             return self.parse(input)
@@ -232,6 +235,14 @@ class regex(Parser):
             raise mismatch(expected=self.desc, received=repr(input))
 
 # Combinators
+class ignored(UnaryCombinator):
+    def parse(self, input):
+        self.parser(input)
+        if input:
+            return PartialResult.create(Result(''), input)
+        else:
+            return Result('')
+
 class many(UnaryCombinator):
     def parse(self, input):
         parsed = ''
@@ -380,3 +391,6 @@ def escaped(c):
         input.match('\\')
         return input.match(c)
     return escaped_char
+
+def trimmed(parser):
+    return Parser.coerce(parser).surrounded_by(ignored(optional(whitespace)))

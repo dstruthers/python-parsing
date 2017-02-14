@@ -5,9 +5,10 @@ Author: Darren M. Struthers - <dstruthers@gmail.com>
 ## Premise
 
 The `parsing` library is a combinatorial parsing framework. As such, it provides
-an extensible collection of atomic parsers, as well as combinators. These can be
-used together to build up complex parsers from simple, understandable, building
-blocks.
+an extensible collection of atomic parsers, as well as combinators. A combinator
+is a function which takes a parser and changes its behavior in a specific way.
+Parsers and combinators can be used together to build up complex parsers from
+simple, understandable, building blocks.
 
 ## Basic Overview
 

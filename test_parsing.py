@@ -178,3 +178,25 @@ def test_until():
     prefix = random_str()
     parser = until(pattern)
     assert(parser(prefix + pattern) == prefix)
+
+@repeated
+def test_surrounded_by():
+    pattern = random_str()
+    outer = random_str()
+    parser = constant(pattern).surrounded_by(outer)
+    assert(isinstance(parser, sequence))
+    assert(parser(outer + pattern + outer) == outer + pattern + outer)
+
+@repeated
+def test_ignored():
+    pattern = random_str()
+    parser = ignored(pattern)
+    result = parser(pattern)
+    assert(isinstance(result, Result) and not(isinstance(result, PartialResult)))
+    assert(result == '')
+
+@repeated
+def test_trimmed():
+    pattern = random_str()
+    parser = trimmed(pattern)
+    assert(parser('   ' + pattern + '   ') == pattern)

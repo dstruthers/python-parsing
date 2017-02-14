@@ -219,7 +219,11 @@ class not_(UnaryCombinator):
             self.parser(input)
         except ParserError:
             input.rollback()
-            return input.consume(1)
+            parsed = input.consume(1)
+            if input:
+                return PartialResult.create(parsed, input)
+            else:
+                return Result(parsed)
         else:
             input.rollback()
             raise ParserError('Matched unwanted input: ' + self.parser)
@@ -337,9 +341,3 @@ digit = regex('[0-9]', desc='digit')
 eof = regex('$', desc='end of input')
 letter = regex('[A-Za-z]', desc='letter')
 whitespace = regex('[\s\t]+', desc='whitespace')
-
-@parser
-def double_letter(input):
-    c = input.match(char)
-    input.match(c)
-    return c * 2

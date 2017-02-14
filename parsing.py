@@ -61,17 +61,26 @@ class Parser(object):
         else:
             return sequence([self.coerce(other), self])
 
+    def __invert__(self):
+        return not_(self)
+    
     def __mul__(self, other):
-        return sequence([self for i in range(0, other)])
+        return repeat(self, other)
 
     def __rmul__(self, other):
-        return sequence([self for i in range(0, other)])
-    
+        return repeat(self, other)
+
     def __or__(self, other):
-        return one_of([self, other])
+        if isinstance(other, one_of):
+            return one_of([self] + other.parsers)
+        else:
+            return one_of([self, other])
 
     def __ror__(self, other):
-        return one_of([other, self])
+        if isinstance(other, one_of):
+            return one_of(other.parsers + [self])
+        else:
+            return one_of([other, self])
 
     @staticmethod
     def coerce(obj):
@@ -86,6 +95,23 @@ class Parser(object):
         else:
             raise TypeError("Can't convert '{}' object to Parser implicitly".format(obj.__class__.__name__))
 
+class repeat(Parser):
+    def __init__(self, parser, times):
+        self.parser = self.coerce(parser)
+        self.times = times
+
+    def parse(self, input):
+        parsed = ''
+        for i in range(0, self.times):
+            parsed += self.parser(input)
+        return Result(parsed)
+
+    def __mul__(self, other):
+        return repeat(self.parser, self.times * other)
+        
+    def __rmul__(self, other):
+        return repeat(self.parser, self.times * other)
+    
 class UnaryCombinator(Parser):
     def __init__(self, parser):
         self.parser = self.coerce(parser)
@@ -179,6 +205,12 @@ class constant(Parser):
         else:
             raise mismatch(expected=repr(self.value), received=repr(input))
 
+    def __mul__(self, other):
+        return constant(self.value * other)
+
+    def __rmul__(self, other):
+        return constant(self.value * other)
+
 class regex(Parser):
     def __init__(self, pattern, flags=0, desc=''):
         self.regexp = re.compile(pattern, flags)
@@ -226,7 +258,7 @@ class not_(UnaryCombinator):
                 return Result(parsed)
         else:
             input.rollback()
-            raise ParserError('Matched unwanted input: ' + self.parser)
+            raise ParserError('Matched unwanted input: ' + input)
         
 class one_of(MultaryCombinator):
     def parse(self, input):
@@ -341,3 +373,10 @@ digit = regex('[0-9]', desc='digit')
 eof = regex('$', desc='end of input')
 letter = regex('[A-Za-z]', desc='letter')
 whitespace = regex('[\s\t]+', desc='whitespace')
+
+def escaped(c):
+    @parser
+    def escaped_char(input):
+        input.match('\\')
+        return input.match(c)
+    return escaped_char

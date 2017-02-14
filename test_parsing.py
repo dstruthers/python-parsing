@@ -13,14 +13,23 @@ def test_parser_radd():
     p = 'foo' + constant('bar')
     assert(isinstance(p, sequence))
 
-def test_parser_mul():
+def test_constant_mul():
     p = constant('foo') * 3
-    assert(isinstance(p, sequence))
+    assert(isinstance(p, constant))
 
-def test_parser_rmul():
+def test_constant_rmul():
     p = 3 * constant('foo')
-    assert(isinstance(p, sequence))
+    assert(isinstance(p, constant))
 
+def test_other_mul():
+    p = one_of(['foo', 'bar']) * 3
+    print(repeat.__doc__)
+    assert(isinstance(p, repeat))
+
+def test_other_rmul():
+    p = 3 * one_of(['foo', 'bar'])
+    assert(isinstance(p, repeat))
+    
 def test_parser_or():
     p = constant('foo') | constant('bar')
     assert(isinstance(p, one_of))
@@ -103,32 +112,32 @@ def random_str(length=16):
         s += chr(randint(33, 127))
     return s
 
-def repeat(test_fn):
+def repeated(test_fn):
     """Decorator that produces a test which will repeat 100 times."""
     def repeat_decorator(*args, **kwargs):
         for i in range(0, 100):
             test_fn(*args, **kwargs)
     return repeat_decorator
 
-@repeat
+@repeated
 def test_constant():
     r = random_str()
     parser = constant(r)
     assert(parser(r) == r)
 
-@repeat
+@repeated
 def test_regex():
     r = random_str()
     parser = regex('^{}$'.format(re.escape(r)))
     assert(parser(r) == r)
 
-@repeat
+@repeated
 def test_many():
     r = random_str()
     parser = many(r)
     assert(parser(r * 10) == r * 10)
 
-@repeat
+@repeated
 def test_not():
     avoid = random_str()
     prefix = random_str(length=1)
@@ -137,13 +146,13 @@ def test_not():
     assert(result == prefix)
     assert(result.remainder == avoid)
 
-@repeat
+@repeated
 def test_one_of():
     tokens = [random_str() for i in range(0, 5)]
     parser = one_of(tokens)
     assert(parser(tokens[3]) == tokens[3])
 
-@repeat
+@repeated
 def test_optional():
     pattern = random_str()
     alternative = random_str()
@@ -151,19 +160,19 @@ def test_optional():
     assert(parser(pattern) == pattern)
     assert(parser(alternative) == '')
 
-@repeat
+@repeated
 def test_sep_by():
     tokens = [random_str() for i in range(0, 5)]
     separator = random_str()
     assert(sep_by(one_of(tokens), separator)(separator.join(tokens)) == tokens)
 
-@repeat
+@repeated
 def test_sequence():
     tokens = [random_str() for i in range(0, 5)]
     parser = sequence(tokens)
     assert(parser(''.join(tokens)) == ''.join(tokens))
 
-@repeat
+@repeated
 def test_until():
     pattern = random_str()
     prefix = random_str()

@@ -384,6 +384,7 @@ digit = regex('[0-9]', desc='digit')
 eof = regex('$', desc='end of input')
 letter = regex('[A-Za-z]', desc='letter')
 whitespace = regex('[\s\t]+', desc='whitespace')
+word_boundary = regex('[\s\.,;\'\"!\?\(\)]+', desc='word boundary')
 
 def escaped(c):
     @parser

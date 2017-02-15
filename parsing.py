@@ -244,16 +244,31 @@ class ignored(UnaryCombinator):
             return Result('')
 
 class many(UnaryCombinator):
+    def __init__(self, parser, at_least=0):
+        self.at_least = at_least
+        super(many, self).__init__(parser)
+        
     def parse(self, input):
         parsed = ''
+        count = 0
+
+        input.begin()        
         while input:
             try:
                 parsed += str(self.parser(input))
+                count += 1
             except ParserError:
                 break
+
+        if count >= self.at_least:
+            input.commit()
+            if input:
+                return PartialResult.create(parsed, input)
+            else:
+                return Result(parsed)
         else:
-            return Result(parsed)
-        return PartialResult.create(parsed, input)
+            input.rollback()
+            raise mismatch(expected='at least {} occurrences of {}'.format(self.at_least, self.parser), received=input)
 
 class not_(UnaryCombinator):
     def parse(self, input):

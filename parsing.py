@@ -289,9 +289,13 @@ class not_(UnaryCombinator):
 class one_of(MultaryCombinator):
     def parse(self, input):
         for parser in self.parsers:
+            input.begin()
             try:
-                return parser(input)
-            except ParserError: pass
+                result = parser(input)
+                input.commit()                
+                return result
+            except ParserError:
+                input.rollback()
         else:
             raise ParserError('None of the supplied parsers matched the provided input')
 

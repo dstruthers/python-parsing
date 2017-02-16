@@ -85,6 +85,18 @@ class Parser(object):
         else:
             return one_of([other, self])
 
+    def __rshift__(self, other):
+        if callable(other):
+            return Pipe(self, other)
+        else:
+            return Pipe(self, lambda *args, **kwargs: other)
+        
+    def __rrshift__(self, other):
+        if callable(other):
+            return Pipe(other, self)
+        else:
+            return Pipe(lambda *args, **kwargs: other, self)
+
     @staticmethod
     def coerce(obj):
         if isinstance(obj, Parser):
@@ -152,7 +164,10 @@ class Input(derived(str)):
     def match(self, parser):
         if not isinstance(parser, Parser):
             parser = Parser.coerce(parser)
-        return parser(self)
+        saved_value = self.value
+        result = parser(self)
+        result.matched = saved_value[0:len(saved_value) - len(self.value)]
+        return result
 
     def rollback(self):
         self.value, self._consumed = self._stack.pop()
@@ -234,6 +249,21 @@ class regex(Parser):
             
             raise mismatch(expected=self.desc, received=repr(input))
 
+# Pre- and Post-Processing
+class Pipe(object):
+    def __init__(self, in_fn, out_fn):
+        self.in_fn = in_fn
+        self.out_fn = out_fn
+
+    def __call__(self, *args, **kwargs):
+        return self.out_fn(self.in_fn(*args, **kwargs))
+
+    def __rshift__(self, other):
+        return Pipe(self, other)
+
+    def __rrshift__(self, other):
+        return Pipe(other, self)
+        
 # Combinators
 class ignored(UnaryCombinator):
     def parse(self, input):
@@ -310,6 +340,17 @@ class optional(UnaryCombinator):
         except ParserError:
             return PartialResult.create('', input)
 
+class peek(UnaryCombinator):
+    def parse(self, input):
+        input.begin()
+        try:
+            self.parser(input)
+            input.rollback()
+            return PartialResult.create('', input)
+        except ParserError:
+            input.rollback()
+            raise
+        
 class sep_by(BinaryCombinator):
     def parse(self, input):
         parser = self.parser1

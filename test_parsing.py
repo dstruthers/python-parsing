@@ -103,6 +103,29 @@ def test_parser_decorator():
     assert(isinstance(result, Result))
     assert(isinstance(result, list))
     assert(result == ['foo'])
+
+# Test associativity of binary operators
+def test_plus_associativity():
+    foo = constant('foo')
+    bar = constant('bar')
+    baz = constant('baz')
+
+    p1 = (foo + bar) + baz
+    p2 = foo + (bar + baz)
+    assert(p1('foobarbaz') == p2('foobarbaz'))
+
+def test_or_associativity():
+    p1 = (constant('foobar') | constant('foo')) | constant('f')
+    p2 = constant('foobar') | (constant('foo') | constant('f'))
+
+    assert(p1('foobar') == p2('foobar'))
+    assert(p1('foo') == p2('foo'))
+    assert(p1('f') == p2('f'))
+
+def test_rshift_associativity():
+    p1 = (constant('foo') >> str.upper) >> constant('FOO')
+    p2 = constant('foo') >> (str.upper >> constant('FOO'))
+    assert(p1('foo') == p2('foo'))
     
 # Test provided Parser subclasses
 def random_str(length=16):
@@ -137,6 +160,13 @@ def test_many():
     parser = many(r)
     assert(parser(r * 10) == r * 10)
 
+@pytest.mark.xfail(raises=ParserError)
+@repeated
+def test_many_at_least():
+    r = random_str()
+    parser = many(r, at_least=11)
+    parser(r * 10)
+    
 @repeated
 def test_not():
     avoid = random_str()
@@ -160,6 +190,13 @@ def test_optional():
     assert(parser(pattern) == pattern)
     assert(parser(alternative) == '')
 
+@repeated
+def test_peek():
+    pattern = random_str()
+    parser = peek(pattern)
+    assert(parser(pattern) == '')
+    assert(parser(pattern) == '')
+    
 @repeated
 def test_sep_by():
     tokens = [random_str() for i in range(0, 5)]
@@ -200,3 +237,9 @@ def test_trimmed():
     pattern = random_str()
     parser = trimmed(pattern)
     assert(parser('   ' + pattern + '   ') == pattern)
+
+@repeated
+def test_input_match_vs_parser_call():
+    pattern = random_str()
+    parser = constant(pattern)
+    assert(parser(Input(pattern)) == Input(pattern).match(parser))

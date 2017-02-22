@@ -172,6 +172,9 @@ class Input(derived(str)):
     def rollback(self):
         self.value, self._consumed = self._stack.pop()
 
+    def __radd__(self, other):
+        return other + self.value
+
 class Result(Mimic):
     def __init__(self, result):
         self.result = result
@@ -250,13 +253,16 @@ class regex(Parser):
             raise mismatch(expected=self.desc, received=repr(input))
 
 # Pre- and Post-Processing
-class Pipe(object):
+class Pipe(Parser):
     def __init__(self, in_fn, out_fn):
         self.in_fn = in_fn
         self.out_fn = out_fn
 
     def __call__(self, *args, **kwargs):
         return self.out_fn(self.in_fn(*args, **kwargs))
+
+    def parse(self, input):
+        return self(input)
 
     def __rshift__(self, other):
         return Pipe(self, other)

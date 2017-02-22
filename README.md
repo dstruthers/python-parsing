@@ -2,19 +2,31 @@
 
 Author: Darren M. Struthers - <dstruthers@gmail.com>
 
-## Premise
-
-The `parsing` library is a combinatorial parsing framework. As such, it provides
-an extensible collection of atomic parsers, as well as combinators. A combinator
-is a function which takes a parser and changes its behavior in a specific way.
-Parsers and combinators can be used together to build up complex parsers from
-simple, understandable, building blocks.
-
 ## Basic Overview
 
-Individual Parsers are callable, and in most cases, there is no harm in thinking
-of them merely as functions which receive input, attempt to parse it, and
-return some output.
+The `parsing` library is a combinatorial parsing framework. As such, it provides
+an extensible collection of basic parsers and combinators. A parser is a
+callable object which accepts input and returns some related output, and a
+combinator is a function which takes one or more parsers and joins them and/or
+changes their behavior in a specific way. Parsers and combinators can be used
+together to build up complex parsers from simple, understandable, building
+blocks.
+
+## Brief Tour of this Module
+
+The following is not intended to be a comprehensive overview of everything in
+the `parsing` module, but it covers its general concepts and features, and is
+intended to serve as an accessible introduction to this framework.
+
+### Contents
+* [Starting Simple: `constant`](#starting-simple-constant)
+* [Overloaded Operators](#overloaded-operators)
+* [`not_` vs. `until`](#not_-vs-until)
+* [Regular Expressions](#regular-expressions)
+* [The `Parser` Class](#the-parser-class)
+* [The `Result` Class](#the-result-class)
+
+### Starting Simple: `constant`
 
 The simplest parser is `constant`. Initialize it with a value, and it will be
 capable of consuming that value from the input, and nothing else.
@@ -70,7 +82,7 @@ parsing.ParserError: Expected end of input but received 'd'
 Whenever possible, this framework attempts to provide error messages that are
 human readable, providing insight into the nature of the parsing error.
 
-## Overloaded Operators
+### Overloaded Operators
 
 In the example above, we were able to create a parser as follows:
 
@@ -115,7 +127,7 @@ no_cat1 = ~constant('cat')
 no_cat2 = not_('cat')
 ```
 
-## `not_` vs. `until`
+### `not_` vs. `until`
 
 `not_` only consumes one character of input at a time because it is not
 "greedy". The greedy equivalent of `not_` is `until`, which consumes as many
@@ -129,7 +141,7 @@ characters of input as it can before encountering a match for its parser.
 'aaaaaa'
 ```
 
-## Regular Expressions
+### Regular Expressions
 
 For convenience, a `regex` parser is provided, exposing functionality from the
 built-in `re` module.
@@ -140,7 +152,7 @@ built-in `re` module.
 'foo'
 ```
 
-## Writing New Parsers
+### Writing New Parsers
 
 Any callable object can be converted to a `Parser` instance with the `parser`
 function, which may be used as a decorator.
@@ -156,7 +168,7 @@ def quoted_string(input):
     return content
 ```
 
-## The `Parser` Class
+### The `Parser` Class
 
 All parsers are instances of `Parser` or a subclass thereof. Subclasses of
 `Parser` should implement a `parse` method, which is what gets called when the
@@ -176,7 +188,7 @@ class quoted_string(Parser):
         return Result(content)
 ```
 
-## The `Result` Class
+### The `Result` Class
 
 Parsers should return `Result` instances (when using the `@parser` decorator,
 this is done automatically). A `Result` can be created simply by passing any

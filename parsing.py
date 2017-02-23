@@ -22,7 +22,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 __author__ = 'Darren M. Struthers <dstruthers@gmail.com>'
-__version__ = '1.0.0'
+__version__ = '1.0.0-dev'
 
 import collections.abc
 import re
@@ -89,27 +89,27 @@ class Parser(object):
         if callable(other):
             return Pipe(self, other)
         else:
-            return Pipe(self, lambda *args, **kwargs: other)
+            return Pipe(self, lambda *_, **__: other)
         
     def __rrshift__(self, other):
         if callable(other):
             return Pipe(other, self)
         else:
-            return Pipe(lambda *args, **kwargs: other, self)
+            return Pipe(lambda *_, **__: other, self)
 
     # can this now coerce anything since Input has been refactored to allow any type?
     @staticmethod
     def coerce(obj):
         if isinstance(obj, Parser):
             return obj
-        elif isinstance(obj, str):
-            return constant(obj)
         elif isinstance(obj, QualifiedResult):
             return constant(obj.result)
-        elif isinstance(obj, (list, tuple)):
+        elif isinstance(obj, str):
+            return constant(obj)
+        elif isinstance(obj, collections.abc.Iterable):
             return sequence(obj)
         else:
-            raise TypeError("Can't convert '{}' object to Parser implicitly".format(obj.__class__.__name__))
+            return constant(obj)
 
 class repeat(Parser):
     def __init__(self, parser, times):
@@ -221,7 +221,9 @@ class Nil(object):
         return other
 
     def __eq__(self, other):
-        if isinstance(other, dict):
+        if type(other) is self.__class__:
+            return True
+        elif isinstance(other, dict):
             return other == {}
         elif isinstance(other, list):
             return other == []
@@ -232,11 +234,11 @@ class Nil(object):
         else:
             raise TypeError("Cannot compare Nil object to '{}'".format(other.__class__.__name__))
         
-    def __repr__(self):
-        return 'Nil'
-
     def __radd__(self, other):
         return other
+
+    def __repr__(self):
+        return 'Nil'
 
     def __str__(self):
         return 'Nil'

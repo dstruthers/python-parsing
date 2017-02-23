@@ -233,6 +233,9 @@ class Nil(object):
             return other == ''
         else:
             raise TypeError("Cannot compare Nil object to '{}'".format(other.__class__.__name__))
+
+    def __len__(self):
+        return 0
         
     def __radd__(self, other):
         return other

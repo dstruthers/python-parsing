@@ -84,11 +84,13 @@ def test_result():
     complete_result = parser('foo')
     partial_result = parser('foobar')
 
-    assert(isinstance(complete_result, Result))
-    assert(not(isinstance(complete_result, PartialResult)))
-    assert(isinstance(partial_result, Result))
-    assert(isinstance(partial_result, PartialResult))
-    assert(partial_result.remainder == 'bar')
+    assert(isinstance(complete_result, str))
+    #assert(partial_result.remainder == 'bar')
+    #assert(isinstance(complete_result, Result))
+    #assert(not(isinstance(complete_result, PartialResult)))
+    #assert(isinstance(partial_result, Result))
+    #assert(isinstance(partial_result, PartialResult))
+    #assert(partial_result.remainder == 'bar')
 
 # Test decorator behavior
 def test_parser_decorator():
@@ -100,7 +102,6 @@ def test_parser_decorator():
     assert(isinstance(simple_parser, Parser))
 
     result = simple_parser('foo')
-    assert(isinstance(result, Result))
     assert(isinstance(result, list))
     assert(result == ['foo'])
 
@@ -172,9 +173,9 @@ def test_not():
     avoid = random_str()
     prefix = random_str(length=1)
     result = not_(avoid)(prefix + avoid)
-    assert(isinstance(result, PartialResult))
+    #assert(isinstance(result, Partial))
     assert(result == prefix)
-    assert(result.remainder == avoid)
+    #assert(result.remainder == avoid)
 
 @repeated
 def test_one_of():
@@ -229,7 +230,8 @@ def test_ignored():
     pattern = random_str()
     parser = ignored(pattern)
     result = parser(pattern)
-    assert(isinstance(result, Result) and not(isinstance(result, PartialResult)))
+    #assert(isinstance(result, Result) and not(isinstance(result, PartialResult)))
+    #assert(not(isinstance(result, Partial)))
     assert(result == '')
 
 @repeated

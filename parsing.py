@@ -24,8 +24,8 @@
 __author__ = 'Darren M. Struthers <dstruthers@gmail.com>'
 __version__ = '1.0.0'
 
+import collections.abc
 import re
-from typefu import derived, Mimic
 
 # Core classes
 class Parser(object):
@@ -97,14 +97,15 @@ class Parser(object):
         else:
             return Pipe(lambda *args, **kwargs: other, self)
 
+    # can this now coerce anything since Input has been refactored to allow any type?
     @staticmethod
     def coerce(obj):
         if isinstance(obj, Parser):
             return obj
         elif isinstance(obj, str):
             return constant(obj)
-        elif isinstance(obj, Result):
-            return constant(obj.value)
+        elif isinstance(obj, QualifiedResult):
+            return constant(obj.result)
         elif isinstance(obj, (list, tuple)):
             return sequence(obj)
         else:
@@ -116,10 +117,10 @@ class repeat(Parser):
         self.times = times
 
     def parse(self, input):
-        parsed = ''
+        parsed = Nil
         for i in range(0, self.times):
             parsed += self.parser(input)
-        return Result(parsed)
+        return parsed
 
     def __mul__(self, other):
         return repeat(self.parser, self.times * other)
@@ -139,12 +140,14 @@ class BinaryCombinator(Parser):
 class MultaryCombinator(Parser):
     def __init__(self, parsers):
         self.parsers = [self.coerce(p) for p in parsers]
-        
-class Input(derived(str)):
-    def __init__(self, *args, **kwargs):
+
+class Input(object):
+    def __init__(self, value):
+        if not isinstance(value, collections.abc.Sequence):
+            raise TypeError('{} not a sequence type.'.format(value.__class__))
+        self.value = value
         self._consumed = ''
         self._stack = []
-        super(Input, self).__init__(*args, **kwargs)
 
     def begin(self):
         self._stack.append((self.value, self._consumed))
@@ -166,26 +169,80 @@ class Input(derived(str)):
             parser = Parser.coerce(parser)
         saved_value = self.value
         result = parser(self)
-        result.matched = saved_value[0:len(saved_value) - len(self.value)]
-        return result
+        matched = saved_value[0:len(saved_value) - len(self.value)]
+        return Match(result, matched)
 
     def rollback(self):
         self.value, self._consumed = self._stack.pop()
 
+    def __eq__(self, other):
+        return self.value == other
+
+    def __getitem__(self, offset):
+        return self.value[offset]
+
+    def __len__(self):
+        return len(self.value)
+
     def __radd__(self, other):
         return other + self.value
 
-class Result(Mimic):
-    def __init__(self, result):
-        self.result = result
+    def __repr__(self):
+        return repr(self.value)
 
-class PartialResult(Result):
-    @classmethod
-    def create(cls, value, remainder):
-        result = cls(value)
-        result.remainder = remainder
-        return result
+class QualifiedResult(object):
+    def __add__(self, other):
+        return self.result + other
     
+    def __eq__(self, other):
+        return self.result == other
+
+    def __getitem__(self, offset):
+        return self.result[offset]
+
+    def __len__(self):
+        return len(self.result)
+
+    def __radd__(self, other):
+        return other + self.result
+    
+class Match(QualifiedResult):
+    def __init__(self, result, matched):
+        self.result = result
+        self.matched = matched
+    
+class Partial(QualifiedResult):
+    def __init__(self, result, remainder):
+        self.result = result
+        self.remainder = remainder
+
+class Nil(object):
+    def __add__(self, other):
+        return other
+
+    def __eq__(self, other):
+        if isinstance(other, dict):
+            return other == {}
+        elif isinstance(other, list):
+            return other == []
+        elif isinstance(other, set):
+            return other == set()
+        elif isinstance(other, str):
+            return other == ''
+        else:
+            raise TypeError("Cannot compare Nil object to '{}'".format(other.__class__.__name__))
+        
+    def __repr__(self):
+        return 'Nil'
+
+    def __radd__(self, other):
+        return other
+
+    def __str__(self):
+        return 'Nil'
+
+Nil = Nil()
+        
 # Errors
 class ParserError(Exception): pass
 class EndOfInputError(ParserError): pass
@@ -200,14 +257,7 @@ def mismatch(expected='', received=''):
 def parser(parse_func):
     class ParserWrapper(Parser):
         def parse(self, input):
-            parse_result = parse_func(input)
-            if isinstance(parse_result, Result):
-                return parse_result
-            else:
-                if len(input) > 0:
-                    return PartialResult.create(parse_result, input)
-                else:
-                    return Result(parse_result)
+            return parse_func(input)
     ParserWrapper.__name__ = parse_func.__name__
     return ParserWrapper()
 
@@ -217,12 +267,8 @@ class constant(Parser):
         self.value = value
         
     def parse(self, input):
-        if input.startswith(self.value):
-            consumed = input.consume(len(self.value))
-            if input:
-                return PartialResult.create(consumed, input)
-            else:
-                return Result(consumed)
+        if input[0:len(self.value)] == self.value:
+            return input.consume(len(self.value))
         else:
             raise mismatch(expected=repr(self.value), received=repr(input))
 
@@ -241,15 +287,10 @@ class regex(Parser):
             self.desc = 'regular expression ' + repr(pattern)
 
     def parse(self, input):
-        matched = self.regexp.match(str(input))
+        matched = self.regexp.match(input.value)
         if matched:
-            result = input.consume(matched.end())
-            if input:
-                return PartialResult.create(result, input)
-            else:
-                return Result(result)
+            return input.consume(matched.end())
         else:
-            
             raise mismatch(expected=self.desc, received=repr(input))
 
 # Pre- and Post-Processing
@@ -274,10 +315,7 @@ class Pipe(Parser):
 class ignored(UnaryCombinator):
     def parse(self, input):
         self.parser(input)
-        if input:
-            return PartialResult.create(Result(''), input)
-        else:
-            return Result('')
+        return Nil
 
 class many(UnaryCombinator):
     def __init__(self, parser, at_least=0):
@@ -285,23 +323,20 @@ class many(UnaryCombinator):
         super(many, self).__init__(parser)
         
     def parse(self, input):
-        parsed = ''
+        parsed = Nil
         count = 0
 
         input.begin()        
         while input:
             try:
-                parsed += str(self.parser(input))
+                parsed += self.parser(input)
                 count += 1
             except ParserError:
                 break
 
         if count >= self.at_least:
             input.commit()
-            if input:
-                return PartialResult.create(parsed, input)
-            else:
-                return Result(parsed)
+            return parsed
         else:
             input.rollback()
             raise mismatch(expected='at least {} occurrences of {}'.format(self.at_least, self.parser), received=input)
@@ -313,11 +348,7 @@ class not_(UnaryCombinator):
             self.parser(input)
         except ParserError:
             input.rollback()
-            parsed = input.consume(1)
-            if input:
-                return PartialResult.create(parsed, input)
-            else:
-                return Result(parsed)
+            return input.consume(1)
         else:
             input.rollback()
             raise ParserError('Matched unwanted input: ' + input)
@@ -328,7 +359,7 @@ class one_of(MultaryCombinator):
             input.begin()
             try:
                 result = parser(input)
-                input.commit()                
+                input.commit()
                 return result
             except ParserError:
                 input.rollback()
@@ -338,13 +369,9 @@ class one_of(MultaryCombinator):
 class optional(UnaryCombinator):
     def parse(self, input):
         try:
-            parsed = self.parser(input)
-            if input:
-                return PartialResult.create(parsed, input)
-            else:
-                return parsed
+            return self.parser(input)
         except ParserError:
-            return PartialResult.create('', input)
+            return Nil
 
 class peek(UnaryCombinator):
     def parse(self, input):
@@ -352,11 +379,12 @@ class peek(UnaryCombinator):
         try:
             self.parser(input)
             input.rollback()
-            return PartialResult.create('', input)
+            return Nil
         except ParserError:
             input.rollback()
             raise
-        
+
+# Consider merging with sequence. Add separator= keyword argument
 class sep_by(BinaryCombinator):
     def parse(self, input):
         parser = self.parser1
@@ -375,11 +403,10 @@ class sep_by(BinaryCombinator):
             else:
                 input.commit()
 
-        if input:
-            return PartialResult.create(parsed, input)
-        else:
-            return Result(parsed)
-    
+        return parsed
+
+# Consider adding keyword arguments such as output_type, then use some kind of
+# monoid framework for construction
 class sequence(MultaryCombinator):
     def __init__(self, parsers):
         self._iter_i = 0
@@ -387,7 +414,7 @@ class sequence(MultaryCombinator):
         
     def parse(self, input):
         input.begin()
-        result = ''
+        result = Nil
         try:
             for parser in self.parsers:
                 result += parser(input)
@@ -396,10 +423,7 @@ class sequence(MultaryCombinator):
             raise
 
         input.commit()
-        if input:
-            return PartialResult.create(result, input)
-        else:
-            return Result(result)
+        return result
 
     # Make sequences iterable
     def __iter__(self):
@@ -426,15 +450,16 @@ class sequence(MultaryCombinator):
     def pop(self, *args, **kwargs):
         return self.parsers.pop(*args, **kwargs)
 
+# should this combinator fail if its operand is never encountered?
 class until(UnaryCombinator):
     def parse(self, input):
-        parsed = ''
+        parsed = Nil
         while input:
             try:
                 input.begin()
                 self.parser(input)
                 input.rollback()
-                return PartialResult.create(parsed, input)
+                return parsed
             except EndOfInputError:
                 input.rollback()
                 raise
@@ -442,7 +467,7 @@ class until(UnaryCombinator):
                 input.rollback()
                 parsed += input.consume(1)
         else:
-            return Result(parsed)
+            return parsed
     
 # Complimentary instances
 char = regex('.', desc='character')

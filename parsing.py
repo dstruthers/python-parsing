@@ -232,7 +232,7 @@ class Nil(object):
         elif isinstance(other, str):
             return other == ''
         else:
-            raise TypeError("Cannot compare Nil object to '{}'".format(other.__class__.__name__))
+            return NotImplemented
 
     def __len__(self):
         return 0

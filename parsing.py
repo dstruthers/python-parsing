@@ -219,24 +219,29 @@ class Partial(QualifiedResult):
 class Nil(object):
     def __add__(self, other):
         return other
-
+    
+    def __contains__(self, _):
+        return False
+    
     def __eq__(self, other):
-        if type(other) is self.__class__:
+        if type(other) == type(self):
             return True
-        elif isinstance(other, dict):
-            return other == {}
-        elif isinstance(other, list):
-            return other == []
-        elif isinstance(other, set):
-            return other == set()
-        elif isinstance(other, str):
-            return other == ''
-        else:
-            return NotImplemented
+        elif isinstance(other, collections.abc.Sized):
+            try:
+                return other == type(other)()
+            except:
+                pass
+        return NotImplemented
+
+    def __iter__(self):
+        return self
 
     def __len__(self):
         return 0
-        
+
+    def __next__(self):
+        raise StopIteration
+
     def __radd__(self, other):
         return other
 

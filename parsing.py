@@ -227,11 +227,9 @@ class Nil(object):
         if type(other) == type(self):
             return True
         elif isinstance(other, collections.abc.Sized):
-            try:
-                return other == type(other)()
-            except:
-                pass
-        return NotImplemented
+            return len(other) == 0
+        else:
+            return NotImplemented
 
     def __iter__(self):
         return self
